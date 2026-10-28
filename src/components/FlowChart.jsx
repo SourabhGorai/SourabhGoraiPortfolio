@@ -1,5 +1,5 @@
 import './flowchart.css'
-
+// ------------------------------------------------------------------
 // Renders each entry of `flows` ({ title, steps[] }) as an animated pipeline.
 // A packet travels along the track and each step lights up as it arrives.
 // Flows whose title mentions "fail" or "error" get the dashed "error path" style.
