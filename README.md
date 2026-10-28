@@ -16,6 +16,17 @@ npm run preview  # preview the production build
 - Put your resume PDF and photo in `public/` and set `resume` and `photo` in `profile`.
 - Colours and layout are in `src/index.css` (see the variables at the top).
 
-## Deploy
-Push to GitHub and import the repo in Cloudflare Pages, Netlify or Vercel
-(build command `npm run build`, output directory `dist`).
+## Deploy to GitHub Pages
+
+The repository includes a GitHub Actions workflow at `.github/workflows/deploy.yml`.
+After pushing to `main`:
+
+1. In GitHub, open **Settings → Pages**.
+2. Set **Source** to **GitHub Actions**.
+3. Push changes to `main`, or run **Deploy portfolio to GitHub Pages** manually from the Actions tab.
+
+The site will be available at:
+`https://sourabhgorai.github.io/SourabhGoraiPortfolio/`
+
+The Vite `base` path is configured for this repository's project-site URL. If the
+repository is renamed, update `base` in `vite.config.js` and the URL above.
