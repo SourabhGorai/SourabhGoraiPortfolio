@@ -1,0 +1,111 @@
+/* ============ SAP CPI-style animated iFlow diagram ============ */
+
+/* wide screens get the diagram, narrow screens get the vertical FlowChart */
+.ifl-desktop{display:block}
+.ifl-mobile{display:none}
+@media (max-width:1000px){
+  .ifl-desktop{display:none}
+  .ifl-mobile{display:block}
+}
+
+.ifl{
+  --dur:14s;
+  margin:18px 0 8px;padding:10px 10px 14px;
+  background:var(--bg);border:1px solid var(--line);border-radius:14px;
+}
+.ifl svg{display:block;width:100%;height:auto;overflow:visible}
+
+/* ---- static look ---- */
+.ifl-pool{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.ifl-sub{fill:none;stroke:var(--muted);stroke-width:1.5;stroke-dasharray:6 4;opacity:.8}
+
+.ifl-seq{stroke:var(--blue);stroke-width:2;fill:none}
+.ifl-msg{stroke:var(--blue);stroke-width:1.6;stroke-dasharray:5 4;fill:none;opacity:.75}
+
+.ifl-box,.ifl-evt,.ifl-gw{fill:var(--blue-soft);stroke:var(--blue);stroke-width:2}
+.ifl-evt-end{stroke-width:4}
+.ifl-dot{fill:var(--surface);stroke:var(--blue);stroke-width:2}
+
+.ifl-ico{fill:none;stroke:var(--blue);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+.ifl text{font-family:var(--body)}
+.ifl-lbl{font-size:12.5px;font-weight:600;fill:var(--muted)}
+.ifl-note{font-size:11.5px;font-weight:500;fill:var(--muted)}
+.ifl-pool-label{font-size:11.5px;font-weight:700;letter-spacing:.08em}
+
+.ifl-recv{fill:var(--bg);stroke:var(--ink);stroke-width:1.5}
+.ifl-recv-t{font-size:13px;font-weight:700;fill:var(--ink)}
+
+/* ---- step highlight: each node lights up when its packet arrives ---- */
+.ifl-node :is(.ifl-box,.ifl-evt,.ifl-gw){animation:ifl-fill var(--dur) linear infinite;animation-delay:var(--d)}
+.ifl-node .ifl-ico{animation:ifl-ico var(--dur) linear infinite;animation-delay:var(--d)}
+.ifl-node .ifl-lbl{animation:ifl-lbl var(--dur) linear infinite;animation-delay:var(--d)}
+.ifl-node-recv .ifl-recv{animation:ifl-recv var(--dur) linear infinite;animation-delay:var(--d)}
+
+@keyframes ifl-fill{
+  0%{fill:var(--blue-soft)} 2%{fill:var(--blue)} 12%{fill:var(--blue)} 22%{fill:var(--blue-soft)} 100%{fill:var(--blue-soft)}
+}
+@keyframes ifl-ico{
+  0%{stroke:var(--blue)} 2%{stroke:#fff} 12%{stroke:#fff} 22%{stroke:var(--blue)} 100%{stroke:var(--blue)}
+}
+@keyframes ifl-lbl{
+  0%{fill:var(--muted)} 2%{fill:var(--ink)} 12%{fill:var(--ink)} 22%{fill:var(--muted)} 100%{fill:var(--muted)}
+}
+@keyframes ifl-recv{
+  0%{fill:var(--bg);stroke:var(--ink)} 2%{fill:#F1DFB8;stroke:var(--amber)} 12%{fill:#F1DFB8;stroke:var(--amber)} 22%{fill:var(--bg);stroke:var(--ink)} 100%{fill:var(--bg);stroke:var(--ink)}
+}
+
+/* ---- travelling packets ---- */
+.ifl-pk{fill:var(--amber);opacity:0;filter:drop-shadow(0 0 4px rgba(184,137,58,.8))}
+.ifl-pk-err{fill:var(--blue);filter:drop-shadow(0 0 4px rgba(122,31,43,.6))}
+
+.ifl-pk-main{animation:ifl-main var(--dur) linear infinite}
+.ifl-pk-br{animation:ifl-br var(--dur) linear infinite}
+.ifl-pk-err{animation:ifl-err var(--dur) linear infinite}
+
+/* main flow: start event (x=44) to end event (x=928) = 884 units */
+@keyframes ifl-main{
+  0%{opacity:0;transform:translateX(0)}
+  1.5%{opacity:1}
+  48%{opacity:1;transform:translateX(884px)}
+  51%{opacity:0;transform:translateX(884px)}
+  100%{opacity:0;transform:translateX(884px)}
+}
+/* branch 2: forks off the multicast at ~29%, down to End, then to the Mail receiver */
+@keyframes ifl-br{
+  0%,28%{opacity:0;transform:translate(0,0)}
+  29%{opacity:1;transform:translate(0,0)}
+  36%{opacity:1;transform:translate(0,100px)}
+  44%{opacity:1;transform:translate(0,248px)}
+  47%{opacity:0;transform:translate(0,248px)}
+  100%{opacity:0;transform:translate(0,248px)}
+}
+/* error path: Error Start, across to End 1, down to Admin mail */
+@keyframes ifl-err{
+  0%,60%{opacity:0;transform:translate(0,0)}
+  61%{opacity:1;transform:translate(0,0)}
+  72%{opacity:1;transform:translate(160px,0)}
+  82%{opacity:1;transform:translate(160px,90px)}
+  85%{opacity:0;transform:translate(160px,90px)}
+  100%{opacity:0;transform:translate(160px,90px)}
+}
+
+/* hover to pause and read */
+.ifl:hover *{animation-play-state:paused}
+
+/* ---- legend ---- */
+.ifl-legend{
+  display:flex;flex-wrap:wrap;gap:6px 22px;align-items:center;
+  margin-top:10px;padding:0 6px;font-size:13px;color:var(--muted);
+}
+.ifl-legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:7px;vertical-align:-1px}
+.ifl-legend .ok{background:var(--amber)}
+.ifl-legend .err{background:var(--blue)}
+.ifl-hint{margin-left:auto;font-size:12px;opacity:.8}
+
+/* ---- accessibility: static diagram, no motion ---- */
+@media (prefers-reduced-motion:reduce){
+  .ifl-pk{display:none}
+  .ifl *{animation:none!important}
+  .ifl-hint{display:none}
+}
