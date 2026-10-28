@@ -11,7 +11,7 @@ export const profile = {
   github: "https://github.com/SourabhGorai",
   linkedin: "https://www.linkedin.com/in/sourabh-gorai/",
   resume: "https://drive.google.com/file/d/1htiAC63w9xHh-2fFCUtYzkrr5_2CHqii/view?usp=drive_link", // e.g. '/Sourabh_Gorai_Resume.pdf' after putting the PDF in /public
-  photo: "/public/images/Sourabh Gorai.jpeg", // e.g. '/photo.jpg' after putting the image in /public
+  photo: `${import.meta.env.BASE_URL}images/Sourabh Gorai.jpeg`,
 };
 
 export const nav = [
