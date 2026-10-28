@@ -87,18 +87,77 @@ nav ul a:hover{color:var(--ink)}
 .flow{
   margin-top:clamp(36px,6vw,64px);background:var(--surface);border:1px solid var(--line);
   border-radius:var(--radius);padding:clamp(22px,3.5vw,34px) clamp(18px,3vw,30px) 22px;
+  overflow:hidden;
 }
-.nodes{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
-.track{position:absolute;left:8%;right:8%;top:28px;height:3px;background:var(--line);border-radius:3px}
-.packet{position:absolute;top:-6px;left:0;width:15px;height:15px;border-radius:4px;background:var(--amber);animation:go 6s linear infinite}
-.packet.b{animation-delay:-3s}
-@keyframes go{from{left:0;opacity:0}6%{opacity:1}94%{opacity:1}to{left:calc(100% - 15px);opacity:0}}
-@keyframes godown{from{top:0;opacity:0}6%{opacity:1}94%{opacity:1}to{top:calc(100% - 15px);opacity:0}}
+.nodes{
+  --dot:clamp(48px,6vw,58px);   /* size of the numbered circles */
+  --gap:16px;                   /* space between steps */
+  position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap);
+}
+/* The old single line + two packets are replaced by one line SEGMENT per step
+   (drawn by .node::before) and one packet that hops segment by segment (.node::after).
+   Every segment starts at the centre of its circle and ends at the centre of the next,
+   so the dot can only ever travel 1 -> 2 -> 3 -> 4, in order, in a straight line. */
+.track,.packet{display:none}
+
 .node{position:relative;text-align:center}
 .node .dot{
-  width:clamp(48px,6vw,58px);height:clamp(48px,6vw,58px);margin:0 auto 12px;border-radius:14px;
+  width:var(--dot);height:var(--dot);margin:0 auto 12px;border-radius:50%;
   background:var(--blue-soft);border:2px solid var(--blue);display:grid;place-items:center;
   font-family:var(--display);font-weight:800;color:var(--blue);font-size:20px;position:relative;z-index:1;
+}
+
+.node:not(:last-child)::before,
+.node:not(:last-child)::after{content:"";position:absolute;pointer-events:none}
+
+/* grey line from this circle's centre to the next circle's centre */
+.node:not(:last-child)::before{
+  top:calc(var(--dot) / 2 - 1.5px);left:50%;
+  width:calc(100% + var(--gap));height:3px;
+  background:var(--line);border-radius:3px;
+}
+/* moving maroon dot: a box as long as the segment, with the dot painted at its start,
+   slid along by exactly its own length using transform only */
+.node:not(:last-child)::after{
+  top:calc(var(--dot) / 2 - 7px);left:calc(50% - 7px);
+  width:calc(100% + var(--gap));height:14px;
+  background:radial-gradient(circle at 7px 7px,var(--blue) 0 5px,rgba(122,31,43,.18) 5.5px 7px,transparent 7.5px) no-repeat;
+  opacity:0;
+  animation:hop 7.5s ease-in-out infinite;
+}
+
+/* timing: one 7.5s cycle = three 2s hops with a short pause on each circle */
+.node:nth-child(1 of .node)::after{animation-delay:0s}
+.node:nth-child(2 of .node)::after{animation-delay:2.5s}
+.node:nth-child(3 of .node)::after{animation-delay:5s}
+
+/* each circle lights up when the dot arrives (circle 1 at the start of the cycle) */
+.node .dot{animation:lit 7.5s linear infinite}
+.node:nth-child(1 of .node) .dot{animation-delay:0s}
+.node:nth-child(2 of .node) .dot{animation-delay:2s}
+.node:nth-child(3 of .node) .dot{animation-delay:4.5s}
+.node:nth-child(4 of .node) .dot{animation-delay:7s}
+
+@keyframes hop{
+  0%{opacity:0;transform:translateX(0)}
+  2%{opacity:1}
+  25%{opacity:1;transform:translateX(100%)}
+  27%{opacity:0;transform:translateX(100%)}
+  100%{opacity:0;transform:translateX(100%)}
+}
+@keyframes hop-v{
+  0%{opacity:0;transform:translateY(0)}
+  2%{opacity:1}
+  25%{opacity:1;transform:translateY(100%)}
+  27%{opacity:0;transform:translateY(100%)}
+  100%{opacity:0;transform:translateY(100%)}
+}
+@keyframes lit{
+  0%{background:var(--blue-soft);color:var(--blue)}
+  2%{background:var(--blue);color:#fff}
+  10%{background:var(--blue);color:#fff}
+  16%{background:var(--blue-soft);color:var(--blue)}
+  100%{background:var(--blue-soft);color:var(--blue)}
 }
 .node b{display:block;font-family:var(--display);font-size:clamp(15px,1.8vw,17px)}
 .node span{font-size:14px;color:var(--muted)}
@@ -233,13 +292,23 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
   nav ul a{display:inline-block;padding:8px 0}
 
   .me{grid-template-columns:1fr}
-  .photo{max-width:200px;aspect-ratio:1}
+  .photo{width:200px;max-width:100%;aspect-ratio:1;justify-self:center}   /* centred on mobile */
 
-  .nodes{grid-template-columns:1fr;gap:20px;padding-left:4px}
-  .track{left:32px;right:auto;top:28px;bottom:28px;width:3px;height:auto}
-  .packet{left:-6px;top:0;animation-name:godown}
-  .node{display:grid;grid-template-columns:58px 1fr;gap:16px;text-align:left;align-items:center}
+  .nodes{grid-template-columns:1fr;--gap:20px}
+  .node{display:grid;grid-template-columns:var(--dot) 1fr;column-gap:16px;text-align:left;align-items:start}
   .node .dot{margin:0}
+  /* text block is at least as tall as the circle and centred on it */
+  .node>div:last-child{min-height:var(--dot);display:flex;flex-direction:column;justify-content:center}
+  /* vertical segments: from this circle's centre down to the next circle's centre */
+  .node:not(:last-child)::before{
+    top:calc(var(--dot) / 2);left:calc(var(--dot) / 2 - 1.5px);
+    width:3px;height:calc(100% + var(--gap));
+  }
+  .node:not(:last-child)::after{
+    top:calc(var(--dot) / 2 - 7px);left:calc(var(--dot) / 2 - 7px);
+    width:14px;height:calc(100% + var(--gap));
+    animation-name:hop-v;
+  }
 }
 
 /* phones */
@@ -257,9 +326,9 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
 @media (max-width:380px){
   body{font-size:15.5px}
   .hero h1{font-size:34px}
-  .node{grid-template-columns:48px 1fr;gap:12px}
-  .node .dot{width:48px;height:48px;font-size:17px}
-  .track{left:28px}
+  .nodes{--dot:46px}
+  .node{column-gap:12px}
+  .node .dot{font-size:17px}
   .chips li{font-size:13px;padding:4px 10px}
 }
 

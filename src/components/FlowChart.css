@@ -31,12 +31,12 @@
 }
 
 .fc-packet{
-  position:absolute;top:-6px;left:0;width:15px;height:15px;border-radius:4px;
+  position:absolute;top:-3.5px;left:0;width:10px;height:10px;border-radius:50%;
   background:var(--amber);transform:translateX(-50%);opacity:0;
-  box-shadow:0 0 0 4px rgba(184,137,58,.25);
+  box-shadow:0 0 0 3px rgba(184,137,58,.25);
   animation:fc-run var(--dur) linear infinite;
 }
-.fc-fail .fc-packet{background:var(--blue);box-shadow:0 0 0 4px rgba(122,31,43,.2)}
+.fc-fail .fc-packet{background:var(--blue);box-shadow:0 0 0 3px rgba(122,31,43,.2)}
 
 .fc-steps{
   position:relative;z-index:1;list-style:none;padding:0;
@@ -105,7 +105,7 @@
     background:repeating-linear-gradient(180deg,var(--blue) 0 7px,transparent 7px 14px)
   }
   .fc-packet{
-    left:-6px;top:0;transform:translateY(-50%);
+    left:-3.5px;top:0;transform:translateY(-50%);
     animation-name:fc-run-v;
   }
 }

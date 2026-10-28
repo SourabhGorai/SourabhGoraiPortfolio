@@ -1,6 +1,6 @@
 import { experience } from '../data/portfolio.js'
 import IflowDiagram from './IflowDiagram.jsx'
-import FlowChart from './FlowChart.jsx'
+import IflowMobile from './IflowMobile.jsx'
 import LinkButtons from './LinkButtons.jsx'
 
 export default function Experience() {
@@ -25,8 +25,8 @@ export default function Experience() {
                   <p>{job.case.desc}</p>
                   {/* wide screens: SAP-style iFlow diagram */}
                   <div className="ifl-desktop"><IflowDiagram /></div>
-                  {/* phones and small tablets: readable vertical pipeline */}
-                  <div className="ifl-mobile"><FlowChart flows={job.case.flows} /></div>
+                  {/* phones and small tablets: portrait version of the same diagram */}
+                  <div className="ifl-mobile"><IflowMobile /></div>
                   <h5>Problems I solved</h5>
                   <ul>
                     {job.case.solved.map((s) => <li key={s}>{s}</li>)}

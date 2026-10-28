@@ -1,20 +1,27 @@
-import { useId } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import './IFlow.css'
 
 /* ------------------------------------------------------------------
-   SAP CPI-style integration flow, drawn as an animated SVG.
-   One loop = D seconds:
-     0%–48%  amber packet runs the main flow (each step lights as it arrives)
-     29%     packet forks down Branch 2 to the Mail end event
-     60%–85% maroon packet runs the exception subprocess to the admin mail
+   SAP CPI-style integration flow, drawn as an SVG.
+
+   Performance: instead of ~50 always-running CSS animations, ONE
+   requestAnimationFrame loop moves three small packets and toggles an
+   `is-lit` class on a step only when a packet reaches it (CSS transitions
+   do the colour fade). The loop stops while the diagram is offscreen,
+   while hovered, and when the user prefers reduced motion.
+
+   One loop = D seconds (as fractions of the loop):
+     0.00-0.48  amber packet runs the main flow
+     0.29       packet forks down Branch 2 to the Mail end event
+     0.60-0.85  maroon packet runs the exception subprocess
    ------------------------------------------------------------------ */
 
 const D = 14                       // seconds per loop
 const Y = 180                      // main process row
-const X0 = 44                      // start event
-const X1 = 928                     // end event
-const t = (x) => `${((((x - X0) / (X1 - X0)) * 0.48) * D).toFixed(2)}s`  // main-flow arrival time
-const pct = (p) => `${(p * D).toFixed(2)}s`                               // arbitrary loop position
+const X0 = 44                      // start event x
+const X1 = 928                     // end event x
+const LIT = 0.12                   // how long a step stays lit (fraction of loop)
+const at = (x) => ((x - X0) / (X1 - X0)) * 0.48   // when the main packet reaches x
 
 const steps = [
   { x: 140, type: 'lines',   label: ['Content', 'Modifier 1'] },
@@ -57,7 +64,7 @@ function EvtIcon({ kind }) {
 
 function Step({ x, type, label, up }) {
   return (
-    <g className="ifl-node" style={{ '--d': t(x) }}>
+    <g className="ifl-node" data-at={at(x)}>
       <rect className="ifl-box" x={x - 38} y={Y - 26} width="76" height="52" rx="8" />
       <g className="ifl-ico" transform={`translate(${x} ${Y})`}><Icon type={type} /></g>
       <text className="ifl-lbl" x={x} y={Y + 46} textAnchor="middle">
@@ -68,9 +75,9 @@ function Step({ x, type, label, up }) {
   )
 }
 
-function Evt({ x, y, d, end, kind, label, lx, ly, anchor = 'middle' }) {
+function Evt({ x, y, when, end, kind, label, lx, ly, anchor = 'middle' }) {
   return (
-    <g className="ifl-node" style={{ '--d': d }}>
+    <g className="ifl-node" data-at={when}>
       <circle className={`ifl-evt${end ? ' ifl-evt-end' : ''}`} cx={x} cy={y} r="14" />
       <g className="ifl-ico" transform={`translate(${x} ${y})`}><EvtIcon kind={kind} /></g>
       <text className="ifl-lbl" x={lx ?? x} y={ly ?? y + 34} textAnchor={anchor}>{label}</text>
@@ -78,11 +85,20 @@ function Evt({ x, y, d, end, kind, label, lx, ly, anchor = 'middle' }) {
   )
 }
 
-function Recv({ cx, y, w, label, d }) {
+function Recv({ cx, y, w, label, when }) {
   return (
-    <g className="ifl-node-recv" style={{ '--d': d }}>
+    <g className="ifl-node-recv" data-at={when}>
       <rect className="ifl-recv" x={cx - w / 2} y={y} width={w} height="50" rx="8" />
       <text className="ifl-recv-t" x={cx} y={y + 30} textAnchor="middle">{label}</text>
+    </g>
+  )
+}
+
+function Packet({ cls, x, y }) {
+  return (
+    <g className={`ifl-pk ${cls}`} transform={`translate(${x} ${y})`} opacity="0">
+      <circle className="ifl-halo" r="9" />
+      <circle className="ifl-core" r="5" />
     </g>
   )
 }
@@ -90,9 +106,92 @@ function Recv({ cx, y, w, label, d }) {
 export default function IflowDiagram() {
   const id = useId().replace(/:/g, '')
   const arrow = `url(#${id}-a)`
+  const rootRef = useRef(null)
+
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+    const nodes = [...root.querySelectorAll('[data-at]')].map((el) => ({
+      el, at: parseFloat(el.dataset.at), lit: false,
+    }))
+    const pk = {
+      main: { el: root.querySelector('.ifl-pk-main'), shown: false },
+      br:   { el: root.querySelector('.ifl-pk-br'),   shown: false },
+      err:  { el: root.querySelector('.ifl-pk-err'),  shown: false },
+    }
+
+    const clamp = (v) => Math.min(1, Math.max(0, v))
+    const lerp = (a, b, p) => a + (b - a) * clamp(p)
+
+    const place = (p, x, y, o) => {
+      p.el.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`)
+      p.el.setAttribute('opacity', o.toFixed(2))
+      p.shown = true
+    }
+    const hide = (p) => {
+      if (p.shown) { p.el.setAttribute('opacity', '0'); p.shown = false }
+    }
+
+    const frame = (t) => {
+      // main packet: start event -> end event
+      const om = t < 0.48 ? clamp(t / 0.015) : 1 - clamp((t - 0.48) / 0.03)
+      if (om > 0) place(pk.main, lerp(X0, X1, t / 0.48), Y, om)
+      else hide(pk.main)
+
+      // branch 2: forks at the multicast, down to End, then to the Mail receiver
+      if (t >= 0.29 && t <= 0.47) {
+        const y = t < 0.36 ? lerp(0, 100, (t - 0.29) / 0.07) : lerp(100, 248, (t - 0.36) / 0.08)
+        const o = t < 0.44 ? 1 : 1 - clamp((t - 0.44) / 0.03)
+        place(pk.br, 580, Y + y, o)
+      } else hide(pk.br)
+
+      // error path: Error Start -> End 1 -> Admin mail
+      if (t >= 0.6 && t <= 0.85) {
+        const o = t < 0.61 ? (t - 0.6) / 0.01 : t < 0.82 ? 1 : 1 - clamp((t - 0.82) / 0.03)
+        place(pk.err, 300 + lerp(0, 160, (t - 0.61) / 0.11), 338 + lerp(0, 90, (t - 0.72) / 0.1), o)
+      } else hide(pk.err)
+
+      // light a step only while its packet is "there"; touch the DOM only on change
+      for (const n of nodes) {
+        const lit = ((t - n.at + 1) % 1) < LIT
+        if (lit !== n.lit) { n.lit = lit; n.el.classList.toggle('is-lit', lit) }
+      }
+    }
+
+    let raf = 0, last = 0, elapsed = 0, hovered = false
+    const tick = (now) => {
+      raf = requestAnimationFrame(tick)
+      const dt = last ? Math.min(now - last, 100) : 0
+      last = now
+      if (hovered) return
+      elapsed = (elapsed + dt / 1000) % D
+      frame(elapsed / D)
+    }
+
+    // only run while the diagram is actually on screen
+    const io = new IntersectionObserver(([entry]) => {
+      cancelAnimationFrame(raf)
+      if (entry.isIntersecting) { last = 0; raf = requestAnimationFrame(tick) }
+    })
+    io.observe(root)
+
+    const enter = () => { hovered = true }
+    const leave = () => { hovered = false }
+    root.addEventListener('mouseenter', enter)
+    root.addEventListener('mouseleave', leave)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      io.disconnect()
+      root.removeEventListener('mouseenter', enter)
+      root.removeEventListener('mouseleave', leave)
+    }
+  }, [])
 
   return (
-    <figure className="ifl" style={{ '--dur': `${D}s` }}>
+    <figure className="ifl" ref={rootRef}>
       <svg
         viewBox="0 0 1000 500"
         role="img"
@@ -109,9 +208,9 @@ export default function IflowDiagram() {
         <text className="ifl-note ifl-pool-label" x="20" y="134">INTEGRATION PROCESS</text>
 
         {/* external receivers (top) */}
-        <Recv cx={230} y={14} w={150} label="SAP SuccessFactors" d={t(230)} />
-        <Recv cx={500} y={14} w={130} label="SAP S/4HANA" d={t(500)} />
-        <Recv cx={842} y={14} w={120} label="SFTP Server" d={t(842)} />
+        <Recv cx={230} y={14} w={150} label="SAP SuccessFactors" when={at(230)} />
+        <Recv cx={500} y={14} w={130} label="SAP S/4HANA" when={at(500)} />
+        <Recv cx={842} y={14} w={120} label="SFTP Server" when={at(842)} />
         {[230, 500, 842].map((x) => (
           <line key={x} className="ifl-msg" x1={x} y1={Y - 26} x2={x} y2="66" markerEnd={arrow} />
         ))}
@@ -124,11 +223,11 @@ export default function IflowDiagram() {
           <line key={a} className="ifl-seq" x1={a} y1={Y} x2={b} y2={Y} markerEnd={arrow} />
         ))}
 
-        <Evt x={X0} y={Y} d={t(X0)} kind="timer" label="Start Timer 1" />
+        <Evt x={X0} y={Y} when={at(X0)} kind="timer" label="Start Timer 1" />
         {steps.map((s) => <Step key={s.x} {...s} />)}
 
         {/* sequential multicast */}
-        <g className="ifl-node" style={{ '--d': t(580) }}>
+        <g className="ifl-node" data-at={at(580)}>
           <polygon className="ifl-gw" points={`580,${Y - 20} 600,${Y} 580,${Y + 20} 560,${Y}`} />
           <path className="ifl-ico" d={`M573 ${Y}H587M580 ${Y - 7}V${Y + 7}`} />
           <text className="ifl-lbl" x="580" y={Y - 42} textAnchor="middle">
@@ -136,30 +235,30 @@ export default function IflowDiagram() {
           </text>
         </g>
 
-        <Evt x={X1} y={Y} d={t(X1)} end kind="mail" label="End 2" />
+        <Evt x={X1} y={Y} when={at(X1)} end kind="mail" label="End 2" />
 
         {/* branch 2 */}
         <line className="ifl-seq" x1="580" y1={Y + 20} x2="580" y2="266" markerEnd={arrow} />
-        <text className="ifl-note" x="590" y="242">Branch 2</text>
-        <Evt x={580} y={280} d={pct(0.36)} end kind="mail" label="End" lx={602} ly={285} anchor="start" />
+        <text className="ifl-note" x="590" y="262">Branch 2</text>
+        <Evt x={580} y={280} when={0.36} end kind="mail" label="End" lx={602} ly={285} anchor="start" />
         <line className="ifl-msg" x1="580" y1="294" x2="580" y2="428" markerEnd={arrow} />
         <text className="ifl-note" x="588" y="414">Mail</text>
-        <Recv cx={580} y={428} w={110} label="Mail" d={pct(0.44)} />
+        <Recv cx={580} y={428} w={110} label="Mail" when={0.44} />
 
         {/* exception subprocess */}
-        <rect className="ifl-sub" x="250" y="290" width="260" height="92" rx="10" />
-        <text className="ifl-note" x="380" y="308" textAnchor="middle">Exception Subprocess 1</text>
+        <rect className="ifl-sub" x="250" y="290" width="285" height="92" rx="10" />
+        <text className="ifl-note" x="392" y="308" textAnchor="middle">Exception Subprocess 1</text>
         <line className="ifl-seq" x1="314" y1="338" x2="446" y2="338" markerEnd={arrow} />
-        <Evt x={300} y={338} d={pct(0.6)} kind="bolt" label="Error Start 1" ly={372} />
-        <Evt x={460} y={338} d={pct(0.72)} end kind="mail" label="End 1" lx={482} ly={343} anchor="start" />
+        <Evt x={300} y={338} when={0.6} kind="bolt" label="Error Start 1" ly={372} />
+        <Evt x={460} y={338} when={0.72} end kind="mail" label="End 1" lx={482} ly={343} anchor="start" />
         <line className="ifl-msg" x1="460" y1="352" x2="460" y2="428" markerEnd={arrow} />
         <text className="ifl-note" x="468" y="414">Mail</text>
-        <Recv cx={460} y={428} w={110} label="Admin mail" d={pct(0.82)} />
+        <Recv cx={460} y={428} w={110} label="Admin mail" when={0.82} />
 
         {/* travelling packets (drawn last so they sit on top) */}
-        <rect className="ifl-pk ifl-pk-main" x={X0 - 7} y={Y - 7} width="14" height="14" rx="4" />
-        <rect className="ifl-pk ifl-pk-br" x="573" y={Y - 7} width="14" height="14" rx="4" />
-        <rect className="ifl-pk ifl-pk-err" x="293" y="331" width="14" height="14" rx="4" />
+        <Packet cls="ifl-pk-main" x={X0} y={Y} />
+        <Packet cls="ifl-pk-br" x={580} y={Y} />
+        <Packet cls="ifl-pk-err" x={300} y={338} />
       </svg>
 
       <figcaption className="ifl-legend">
