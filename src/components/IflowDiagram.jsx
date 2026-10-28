@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef } from 'react'
-import './IFlow.css'
+import './iflow.css'
 
 /* ------------------------------------------------------------------
    SAP CPI-style integration flow, drawn as an SVG.
@@ -264,7 +264,7 @@ export default function IflowDiagram() {
       <figcaption className="ifl-legend">
         <span><i className="ok" /> Main flow</span>
         <span><i className="err" /> Error path, runs if any step fails</span>
-        <span className="ifl-hint">Hover to pause</span>
+        <span className="ifl-hint"><span className="ifl-hint-hover">Hover to pause</span><span className="ifl-hint-tap">Tap to pause</span></span>
       </figcaption>
     </figure>
   )

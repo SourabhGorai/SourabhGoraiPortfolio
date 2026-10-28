@@ -1,9 +1,10 @@
 /* ============ SAP CPI-style iFlow diagram ============ */
 
-/* wide screens get the diagram, narrow screens get the vertical FlowChart */
+/* wide screens get the landscape diagram, narrow screens get the portrait one.
+   900px (not 1000) so a phone in "Desktop site" mode, which reports about 980px, gets the landscape diagram */
 .ifl-desktop{display:block}
 .ifl-mobile{display:none}
-@media (max-width:1000px){
+@media (max-width:900px){
   .ifl-desktop{display:none}
   .ifl-mobile{display:block}
 }
@@ -80,7 +81,9 @@
 /* inside the project card there is already a border, so drop the extra frame on mobile */
 .ifl-mobile .ifl{background:none;border:0;padding:0;margin:14px 0 6px}
 
-/* no hover on touch screens, so don't show the desktop "Hover to pause" hint there */
+/* hint text: "Hover to pause" with a mouse, "Tap to pause" on touch screens */
+.ifl-hint-tap{display:none}
 @media (hover:none){
-  .ifl-desktop .ifl-hint{display:none}
+  .ifl-hint-hover{display:none}
+  .ifl-hint-tap{display:inline}
 }
