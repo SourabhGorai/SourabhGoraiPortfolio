@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef } from 'react'
-import './iflow.css'
+import './IFlow.css'
 
 /* ------------------------------------------------------------------
    SAP CPI-style integration flow, drawn as an SVG.
