@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef } from 'react'
-import './iflow.css'
+import './IFlow.css'
 
 /* ------------------------------------------------------------------
    Portrait version of the SAP CPI iFlow diagram, for phones and tablets.
